@@ -92,11 +92,37 @@ export default function Home() {
     });
   }, []);
 
+  const autoSyncIfStale = useCallback(async () => {
+    const res = await fetch("/api/sync-status");
+    if (!res.ok) return;
+    const data = await res.json();
+    const lastSyncAt = data.lastSyncAt ?? null;
+    const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
+    const isStale =
+      !lastSyncAt ||
+      Date.now() - new Date(lastSyncAt).getTime() > FORTY_EIGHT_HOURS_MS;
+    if (isStale) {
+      setSyncing(true);
+      try {
+        const syncRes = await fetch("/api/sync-jira", { method: "POST" });
+        const syncData = await syncRes.json();
+        if (!syncData.error) {
+          await fetchTickets();
+          await fetchSyncStatus();
+        }
+      } catch {
+        // silent fail for background auto-sync
+      } finally {
+        setSyncing(false);
+      }
+    }
+  }, [fetchTickets, fetchSyncStatus]);
+
   useEffect(() => {
     fetchThreads();
     fetchTickets();
-    fetchSyncStatus();
-  }, [fetchThreads, fetchTickets, fetchSyncStatus]);
+    fetchSyncStatus().then(() => autoSyncIfStale());
+  }, [fetchThreads, fetchTickets, fetchSyncStatus, autoSyncIfStale]);
 
   const handleSync = async () => {
     setSyncing(true);

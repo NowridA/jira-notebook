@@ -29,7 +29,7 @@ interface JiraIssueResponse {
 }
 
 const MAX_RESULTS_PER_PAGE = 50;
-const MAX_PAGES = 100; // safety cap: 5000 tickets
+const MAX_PAGES = 200; // safety cap: 10000 tickets
 
 const FIELDS = "summary,status,updated,description";
 
@@ -53,16 +53,17 @@ export async function POST() {
   const auth = Buffer.from(`${email}:${token}`).toString("base64");
 
   const allRawIssues: JiraIssueResponse[] = [];
-  let startAt = 0;
-  let totalFromApi: number | null = null;
+  let nextPageToken: string | undefined;
 
   for (let page = 0; page < MAX_PAGES; page++) {
     const params = new URLSearchParams({
       jql,
       maxResults: String(MAX_RESULTS_PER_PAGE),
-      startAt: String(startAt),
       fields: FIELDS,
     });
+    if (nextPageToken) {
+      params.set("nextPageToken", nextPageToken);
+    }
     const url = `${baseUrl}/rest/api/3/search/jql?${params.toString()}`;
 
     let res: Response;
@@ -110,7 +111,8 @@ export async function POST() {
 
     let data: {
       issues?: JiraIssueResponse[];
-      total?: number;
+      isLast?: boolean;
+      nextPageToken?: string;
     };
     try {
       data = await res.json();
@@ -124,11 +126,8 @@ export async function POST() {
     const issues = data.issues ?? [];
     allRawIssues.push(...issues);
 
-    if (typeof data.total === "number") totalFromApi = data.total;
-
-    if (issues.length < MAX_RESULTS_PER_PAGE) break;
-    startAt += issues.length;
-    if (totalFromApi != null && allRawIssues.length >= totalFromApi) break;
+    if (data.isLast || issues.length === 0 || !data.nextPageToken) break;
+    nextPageToken = data.nextPageToken;
   }
 
   const tickets: Ticket[] = allRawIssues.map((issue) => ({
