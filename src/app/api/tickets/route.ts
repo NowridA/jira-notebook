@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     200
   );
 
-  let tickets = readTickets();
+  let tickets = await readTickets();
 
   if (q) {
     tickets = tickets.filter((t) => {

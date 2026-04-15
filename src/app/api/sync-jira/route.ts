@@ -24,14 +24,21 @@ interface JiraIssueResponse {
     status?: { name: string };
     updated?: string;
     description?: unknown;
+    comment?: {
+      comments: Array<{
+        author?: { displayName?: string };
+        body?: unknown;
+        created?: string;
+      }>;
+      total?: number;
+    };
   };
   self?: string;
 }
 
-const MAX_RESULTS_PER_PAGE = 50;
-const MAX_PAGES = 200; // safety cap: 10000 tickets
+const MAX_RESULTS_PER_PAGE = 100;
 
-const FIELDS = "summary,status,updated,description";
+const FIELDS = "summary,status,updated,description,comment";
 
 export async function POST() {
   const missing = getMissingEnv();
@@ -55,7 +62,8 @@ export async function POST() {
   const allRawIssues: JiraIssueResponse[] = [];
   let nextPageToken: string | undefined;
 
-  for (let page = 0; page < MAX_PAGES; page++) {
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
     const params = new URLSearchParams({
       jql,
       maxResults: String(MAX_RESULTS_PER_PAGE),
@@ -128,20 +136,33 @@ export async function POST() {
 
     if (data.isLast || issues.length === 0 || !data.nextPageToken) break;
     nextPageToken = data.nextPageToken;
-  }
+  } // end while
 
-  const tickets: Ticket[] = allRawIssues.map((issue) => ({
-    key: issue.key,
-    url: `${baseUrl}/browse/${issue.key}`,
-    summary: issue.fields?.summary ?? "",
-    status: issue.fields?.status?.name ?? "",
-    updated: issue.fields?.updated ?? "",
-    descriptionText: descriptionToPlainText(issue.fields?.description),
-    raw: issue.fields ?? undefined,
-  }));
+  const tickets: Ticket[] = allRawIssues.map((issue) => {
+    const comments = issue.fields?.comment?.comments ?? [];
+    const commentsText = comments
+      .map((c) => {
+        const author = c.author?.displayName ?? "Unknown";
+        const body = descriptionToPlainText(c.body);
+        return body ? `${author}: ${body}` : "";
+      })
+      .filter(Boolean)
+      .join("\n");
 
-  upsertTickets(tickets);
-  appendSyncRun({ at: new Date().toISOString(), count: tickets.length });
+    return {
+      key: issue.key,
+      url: `${baseUrl}/browse/${issue.key}`,
+      summary: issue.fields?.summary ?? "",
+      status: issue.fields?.status?.name ?? "",
+      updated: issue.fields?.updated ?? "",
+      descriptionText: descriptionToPlainText(issue.fields?.description),
+      commentsText: commentsText || undefined,
+      raw: issue.fields ?? undefined,
+    };
+  });
+
+  await upsertTickets(tickets);
+  await appendSyncRun({ at: new Date().toISOString(), count: tickets.length });
 
   const payload = {
     count: tickets.length,
