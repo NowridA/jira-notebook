@@ -128,6 +128,22 @@ export default function Home() {
     setSyncing(true);
     try {
       const res = await fetch("/api/sync-jira", { method: "POST" });
+      const contentType = res.headers.get("content-type") ?? "";
+      if (!contentType.includes("application/json")) {
+        // Vercel returned an HTML error page (e.g. timeout or crash)
+        const status = res.status;
+        if (status === 504 || status === 408) {
+          alert(
+            "Sync timed out on Vercel. The full sync (12k+ tickets) takes too long for the free tier.\n\n" +
+            "Run the sync locally and upload:\n" +
+            "  npm run dev  →  click Sync\n" +
+            "  npx tsx upload-to-blob.mts"
+          );
+        } else {
+          alert(`Sync failed: server returned HTTP ${status} (not JSON). Check Vercel function logs.`);
+        }
+        return;
+      }
       const data = await res.json();
       if (data.error) {
         const snippet = data.responseSnippet?.slice(0, 150) ?? "";
