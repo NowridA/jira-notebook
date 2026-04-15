@@ -45,10 +45,16 @@ const STOP_WORDS = new Set([
   "all", "each", "every", "both", "few", "more", "most", "other",
   "some", "such", "no", "not", "only", "same", "so", "than", "too",
   "very", "just", "and", "but", "or", "if", "then", "else", "also",
-  "any", "me", "i", "we", "you", "they", "he", "she", "get", "got",
-  "show", "find", "list", "tell", "give", "see", "look", "recent",
-  "latest", "new", "old", "current", "related", "issue", "ticket",
-  "jira", "problem", "error", "issues", "tickets",
+  "any", "me", "i", "we", "you", "they", "he", "she",
+  // query filler words — not useful as search terms
+  "get", "got", "show", "find", "list", "tell", "give", "see", "look",
+  "recent", "latest", "new", "old", "current", "related",
+  // generic Jira/tech words — every ticket has these, not discriminating
+  "issue", "issues", "ticket", "tickets", "jira",
+  "problem", "problems", "error", "errors", "bug", "bugs",
+  "fix", "fixed", "fixing", "update", "updates", "change", "changes",
+  "request", "requests", "task", "tasks", "work", "feature", "features",
+  "please", "need", "needs", "want", "wants", "using", "used", "use",
 ]);
 
 function tokenize(text: string): string[] {
@@ -99,6 +105,12 @@ function scoreTicket(ticket: Ticket, query: string): number {
   ]
     .join(" ")
     .toLowerCase();
+
+  // Hard AND requirement: all primary keywords must be present somewhere in the ticket
+  if (primary.length >= 2) {
+    const allPresent = primary.every((kw) => corpus.includes(kw));
+    if (!allPresent) return 0;
+  }
 
   let score = 0;
 
