@@ -175,9 +175,13 @@ function fallbackAnswer(
   }
 
   const answers: AnswerBlock[] = tickets.slice(0, 5).map((t) => {
-    const desc = (t.descriptionText ?? "").trim().slice(0, 300);
+    const desc = (t.descriptionText ?? "").trim().slice(0, 250);
+    const comments = (t.commentsText ?? "").trim().slice(0, 250);
+    const body = [desc, comments ? `Comments/Replies:\n${comments}` : ""]
+      .filter(Boolean)
+      .join("\n\n");
     return {
-      text: desc ? `${t.summary}\n\n${desc}` : t.summary || t.key,
+      text: body ? `${t.summary}\n\n${body}` : t.summary || t.key,
       sources: [{ key: t.key, url: t.url, summary: t.summary }],
     };
   });
