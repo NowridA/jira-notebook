@@ -277,6 +277,7 @@ export default function Home() {
         }).catch(() => {});
       } else {
         const payload: AssistantPayload = {
+          summary: data.summary ?? "",
           answers: data.answers ?? [],
           confidence: data.confidence ?? "Low",
           citations: data.citations ?? [],
