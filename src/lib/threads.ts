@@ -2,7 +2,9 @@ import fs from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
 
-const DATA_DIR = path.join(process.cwd(), "data");
+const DATA_DIR = process.env.VERCEL
+  ? path.join("/tmp", "jira-notebook")
+  : path.join(process.cwd(), "data");
 const THREADS_FILE = path.join(DATA_DIR, "threads.json");
 const MESSAGES_DIR = path.join(DATA_DIR, "messages");
 
