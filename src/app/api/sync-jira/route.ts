@@ -161,8 +161,8 @@ export async function POST() {
     };
   });
 
-  upsertTickets(tickets);
-  appendSyncRun({ at: new Date().toISOString(), count: tickets.length });
+  await upsertTickets(tickets);
+  await appendSyncRun({ at: new Date().toISOString(), count: tickets.length });
 
   const payload = {
     count: tickets.length,

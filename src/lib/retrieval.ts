@@ -113,7 +113,7 @@ function getSnippet(ticket: Ticket): string {
 export async function answerFromTickets(
   question: string
 ): Promise<RetrievalResult> {
-  const tickets = readTickets();
+  const tickets = await readTickets();
   const queryTrimmed = question.trim();
 
   if (!queryTrimmed || tickets.length === 0) {
