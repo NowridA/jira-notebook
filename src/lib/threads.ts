@@ -164,7 +164,7 @@ export function duplicateThread(threadId: string): Thread | null {
     }));
     atomicWrite(messagesFilePath(newThread.id), newMessages);
     const last = newMessages[newMessages.length - 1];
-    updateThread(newThread.id, undefined);
+    updateThread(newThread.id, {});
     const threads = readThreads();
     const idx = threads.findIndex((t) => t.id === newThread.id);
     if (idx !== -1) {
