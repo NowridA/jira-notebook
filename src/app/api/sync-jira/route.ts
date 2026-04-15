@@ -62,7 +62,6 @@ export async function POST() {
   const allRawIssues: JiraIssueResponse[] = [];
   let nextPageToken: string | undefined;
 
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     const params = new URLSearchParams({
       jql,
