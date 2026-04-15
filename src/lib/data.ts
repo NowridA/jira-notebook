@@ -29,16 +29,18 @@ export interface SyncRun {
 // ---------------------------------------------------------------------------
 
 function isVercel(): boolean {
-  return !!process.env.BLOB_READ_WRITE_TOKEN;
+  // VERCEL env var is automatically set by Vercel in all deployments
+  return !!process.env.VERCEL || !!process.env.BLOB_READ_WRITE_TOKEN;
 }
 
 async function blobRead<T>(blobPath: string, fallback: T): Promise<T> {
-  const { list } = await import("@vercel/blob");
-  const { blobs } = await list({ prefix: blobPath });
-  if (blobs.length === 0) return fallback;
-  const res = await fetch(blobs[0].url, { cache: "no-store" });
-  if (!res.ok) return fallback;
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return fallback;
   try {
+    const { list } = await import("@vercel/blob");
+    const { blobs } = await list({ prefix: blobPath });
+    if (blobs.length === 0) return fallback;
+    const res = await fetch(blobs[0].url, { cache: "no-store" });
+    if (!res.ok) return fallback;
     const data = (await res.json()) as T;
     return data;
   } catch {
@@ -47,6 +49,7 @@ async function blobRead<T>(blobPath: string, fallback: T): Promise<T> {
 }
 
 async function blobWrite(blobPath: string, data: unknown): Promise<void> {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return;
   const { put } = await import("@vercel/blob");
   await put(blobPath, JSON.stringify(data), {
     access: "public",
