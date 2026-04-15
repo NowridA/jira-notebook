@@ -105,7 +105,7 @@ function extractKeywords(query: string): { tokens: string[]; primary: string[]; 
  * - General keyword coverage
  * - Recency bonus
  */
-function scoreTicket(ticket: Ticket, query: string): number {
+function scoreTicket(ticket: Ticket, query: string, enforceAnd = true): number {
   const queryLower = query.toLowerCase();
   const { tokens: queryTokens, primary, bigramSet } = extractKeywords(query);
   if (queryTokens.length === 0) return 0;
@@ -131,7 +131,7 @@ function scoreTicket(ticket: Ticket, query: string): number {
     (bigramSet.has(kw) && summaryLower.replace(/\s+/g, "").includes(kw));
 
   // Hard AND requirement: all primary keywords must be present somewhere in the ticket
-  if (primary.length >= 2) {
+  if (enforceAnd && primary.length >= 2) {
     if (!primary.every(kwInCorpus)) return 0;
   }
 
@@ -219,10 +219,19 @@ export async function answerFromTickets(
 
   const allByKey = new Map<string, Ticket>(tickets.map((t) => [t.key, t]));
 
-  const scored = tickets
-    .map((t) => ({ ticket: t, score: scoreTicket(t, queryTrimmed) }))
+  // First pass: strict AND (all primary keywords must match)
+  let scored = tickets
+    .map((t) => ({ ticket: t, score: scoreTicket(t, queryTrimmed, true) }))
     .filter((x) => x.score > 0)
     .sort((a, b) => b.score - a.score);
+
+  // If strict AND yields nothing, fall back to OR scoring so rare words don't block results
+  if (scored.length === 0) {
+    scored = tickets
+      .map((t) => ({ ticket: t, score: scoreTicket(t, queryTrimmed, false) }))
+      .filter((x) => x.score > 0)
+      .sort((a, b) => b.score - a.score);
+  }
 
   if (scored.length === 0) {
     return {

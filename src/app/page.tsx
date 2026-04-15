@@ -152,6 +152,7 @@ export default function Home() {
       } else {
         await fetchTickets();
         await fetchSyncStatus();
+        alert(`Sync complete! ${data.count ?? 0} tickets are now indexed.`);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

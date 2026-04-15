@@ -177,9 +177,25 @@ function fallbackAnswer(
   }
 
   const answers: AnswerBlock[] = tickets.slice(0, 5).map((t) => {
-    const desc = (t.descriptionText ?? "").trim().slice(0, 300);
-    const comments = (t.commentsText ?? "").trim().slice(0, 200);
-    const body = [desc, comments].filter(Boolean).join("\n\n");
+    // Short excerpt from description (first ~200 chars, cut at word boundary)
+    const rawDesc = (t.descriptionText ?? "").trim();
+    const descExcerpt = rawDesc.length > 200
+      ? rawDesc.slice(0, 200).replace(/\s\S+$/, "") + "…"
+      : rawDesc;
+
+    // Last comment as latest update / resolution hint
+    const commentLines = (t.commentsText ?? "").trim().split("\n").filter(Boolean);
+    const lastComment = commentLines[commentLines.length - 1] ?? "";
+    const commentExcerpt = lastComment.length > 150
+      ? lastComment.slice(0, 150).replace(/\s\S+$/, "") + "…"
+      : lastComment;
+
+    const parts = [
+      descExcerpt,
+      commentExcerpt ? `*Latest update:* ${commentExcerpt}` : "",
+    ].filter(Boolean);
+
+    const body = parts.join("\n\n");
     return {
       text: body ? `**${t.summary}**\n\n${body}` : `**${t.summary || t.key}**`,
       sources: [{ key: t.key, url: t.url, summary: t.summary }],
