@@ -21,7 +21,7 @@ export interface RetrievalResult {
   citations: Citation[];
 }
 
-const MAX_CONTEXT_TICKETS = 20;
+const MAX_CONTEXT_TICKETS = 40;
 const SNIPPET_MAX_LEN = 200;
 
 const STOP_WORDS = new Set([
@@ -62,6 +62,7 @@ function scoreTicket(ticket: Ticket, query: string): number {
     ticket.key ?? "",
     ticket.summary ?? "",
     ticket.descriptionText ?? "",
+    ticket.commentsText ?? "",
   ]
     .join(" ")
     .toLowerCase();

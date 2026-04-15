@@ -19,6 +19,8 @@ CORE RULES:
 - Every answer MUST be traceable to a Jira ticket provided in context.
 - Do NOT use external knowledge. Do NOT assume anything not written in the tickets.
 - No hallucinations. No speculation. No inferred business logic unless explicitly in ticket content.
+- Each ticket may include a Description and Comments/Replies section — treat both as equally valid sources of information.
+- Solutions, resolutions, and decisions found in Comments/Replies are especially valuable — surface these clearly.
 - If multiple tickets contain relevant but distinct information, provide separate answers, each with its own source(s).
 - Combine related ticket details when appropriate; remove redundancy; clarify ambiguities using only Jira content.
 - Prioritize the most recent or most complete information if conflicts exist.
@@ -58,7 +60,10 @@ function buildTicketContext(tickets: Ticket[]): string {
         `URL: ${t.url}`,
       ];
       if (t.descriptionText) {
-        parts.push(`Description: ${t.descriptionText.slice(0, 1500)}`);
+        parts.push(`Description: ${t.descriptionText.slice(0, 1000)}`);
+      }
+      if (t.commentsText) {
+        parts.push(`Comments/Replies:\n${t.commentsText.slice(0, 1500)}`);
       }
       return parts.join("\n");
     })

@@ -12,6 +12,7 @@ export interface Ticket {
   status: string;
   updated: string;
   descriptionText: string;
+  commentsText?: string;
   raw?: unknown;
 }
 
