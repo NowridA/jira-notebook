@@ -14,6 +14,7 @@ interface AnswerBlock {
 type Confidence = "High" | "Medium" | "Low";
 
 export interface AssistantPayload {
+  summary?: string;
   answers: AnswerBlock[];
   confidence: Confidence;
   citations: CitationItem[];
@@ -57,14 +58,13 @@ function AnswerBlockView({
   index: number;
   total: number;
 }) {
-  const label = total > 1 ? `Answer ${index + 1}:` : "Answer:";
   return (
     <div className="answer-block">
-      <div className="answer-label">{label}</div>
+      {total > 1 && <div className="answer-label">Finding {index + 1}</div>}
       <div className="answer-text">{answer.text}</div>
       {answer.sources.length > 0 && (
         <div className="answer-sources">
-          <span className="answer-source-label">Source:</span>
+          <span className="answer-source-label">Sources:</span>
           {answer.sources.map((src) => (
             <div key={src.key} className="answer-source-item">
               <a
@@ -89,6 +89,9 @@ function AnswerBlockView({
 function AssistantContent({ payload }: { payload: AssistantPayload }) {
   return (
     <div className="ai-response">
+      {payload.summary && (
+        <div className="answer-summary">{payload.summary}</div>
+      )}
       {payload.answers.map((ans, i) => (
         <AnswerBlockView
           key={i}
