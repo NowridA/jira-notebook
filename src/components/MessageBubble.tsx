@@ -1,4 +1,5 @@
 "use client";
+import ReactMarkdown from "react-markdown";
 
 interface SourceItem {
   key: string;
@@ -61,7 +62,9 @@ function AnswerBlockView({
   return (
     <div className="answer-block">
       {total > 1 && <div className="answer-label">Finding {index + 1}</div>}
-      <div className="answer-text">{answer.text}</div>
+      <div className="answer-text">
+        <ReactMarkdown>{answer.text}</ReactMarkdown>
+      </div>
       {answer.sources.length > 0 && (
         <div className="answer-sources">
           <span className="answer-source-label">Sources:</span>
