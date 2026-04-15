@@ -16,6 +16,7 @@ export interface Citation {
 }
 
 export interface RetrievalResult {
+  summary: string;
   answers: { text: string; sources: { key: string; url: string; summary: string }[] }[];
   confidence: Confidence;
   citations: Citation[];
@@ -174,6 +175,7 @@ export async function answerFromTickets(
 
   if (!queryTrimmed || tickets.length === 0) {
     return {
+      summary: "",
       answers: [{ text: "No relevant information found in the synced Jira tickets.", sources: [] }],
       confidence: "Low",
       citations: [],
@@ -189,6 +191,7 @@ export async function answerFromTickets(
 
   if (scored.length === 0) {
     return {
+      summary: "",
       answers: [{ text: "No relevant information found in the synced Jira tickets.", sources: [] }],
       confidence: "Low",
       citations: [],
@@ -228,6 +231,7 @@ export async function answerFromTickets(
   }
 
   return {
+    summary: aiResult.summary,
     answers: aiResult.answers,
     confidence: aiResult.confidence,
     citations,

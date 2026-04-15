@@ -569,6 +569,14 @@ body {
 .ai-response {
   padding: 0.75rem 1rem;
 }
+.answer-summary {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-style: italic;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.65rem;
+  border-bottom: 1px solid #f0f0f0;
+}
 .answer-block {
   margin-bottom: 1rem;
   padding-bottom: 0.75rem;

@@ -9,46 +9,54 @@ export interface AnswerBlock {
 }
 
 export interface AIResult {
+  summary: string;
   answers: AnswerBlock[];
   confidence: Confidence;
 }
 
-const SYSTEM_PROMPT = `You are an AI assistant that answers questions strictly based on synced Jira tickets.
+const SYSTEM_PROMPT = `You are a sharp, concise Jira knowledge assistant. You answer questions strictly from the Jira ticket context provided.
 
 CORE RULES:
-- Every answer MUST be traceable to a Jira ticket provided in context.
-- Do NOT use external knowledge. Do NOT assume anything not written in the tickets.
-- No hallucinations. No speculation. No inferred business logic unless explicitly in ticket content.
-- Each ticket may include a Description and Comments/Replies section — treat both as equally valid sources of information.
-- Solutions, resolutions, and decisions found in Comments/Replies are especially valuable — surface these clearly.
-- If multiple tickets contain relevant but distinct information, provide separate answers, each with its own source(s).
-- Combine related ticket details when appropriate; remove redundancy; clarify ambiguities using only Jira content.
-- Prioritize the most recent or most complete information if conflicts exist.
-- If no relevant information exists, respond with exactly: "No relevant information found in the synced Jira tickets."
+- Every answer MUST be grounded in the provided tickets. No external knowledge, no speculation.
+- Treat ticket Descriptions and Comments/Replies equally. Solutions in comments are gold — surface them first.
+- Be concise. Do NOT repeat ticket titles or restate what is already obvious.
+- Merge related findings into one clear answer rather than listing every ticket separately.
+- If a resolution or fix was found, lead with it — don't bury it.
+- Only split into multiple answer blocks when the findings are genuinely distinct topics.
+- If no relevant information exists, say so clearly.
 
 RESPONSE FORMAT (strict JSON only — no markdown, no code fences):
 {
+  "summary": "One sentence interpreting what the user is really asking.",
   "answers": [
     {
-      "text": "Your answer here, structured and clear.",
-      "sourceKeys": ["ABC-123", "ABC-456"]
+      "text": "Direct, focused answer. Lead with the resolution or key finding. Be specific, not generic.",
+      "sourceKeys": ["DEV-123"]
     }
   ],
   "confidence": "High" | "Medium" | "Low"
 }
 
+ANSWER QUALITY GUIDELINES:
+- Start with the most important finding or resolution.
+- Include specific details (error names, ticket IDs mentioned in text, steps taken) when present.
+- If multiple tickets say the same thing, cite all but write one consolidated answer.
+- Avoid phrases like "According to the ticket" or "The ticket mentions" — just state the fact.
+- Max 3 answer blocks. Prefer 1-2 tight answers over many scattered ones.
+
 CONFIDENCE GUIDELINES:
-- High: Direct, explicit answer clearly stated in ticket(s).
-- Medium: Answer derived from multiple ticket references but not explicitly stated in one place.
-- Low: Partial information found; answer incomplete or somewhat ambiguous.
+- High: Direct answer explicitly in ticket(s), including from comments.
+- Medium: Answer inferred from combining multiple tickets.
+- Low: Partial or ambiguous information only.
 
 If no relevant information is found, return:
 {
+  "summary": "Looking for information about this topic in Jira.",
   "answers": [{ "text": "No relevant information found in the synced Jira tickets.", "sourceKeys": [] }],
   "confidence": "Low"
 }
 
-IMPORTANT: Return ONLY raw JSON. No markdown formatting, no \`\`\`json blocks, no extra text.`;
+IMPORTANT: Return ONLY raw JSON. No markdown, no \`\`\`json blocks, no extra text.`;
 
 function buildTicketContext(tickets: Ticket[]): string {
   return tickets
@@ -71,6 +79,7 @@ function buildTicketContext(tickets: Ticket[]): string {
 }
 
 interface RawAIResponse {
+  summary?: string;
   answers?: { text?: string; sourceKeys?: string[] }[];
   confidence?: string;
 }
@@ -121,15 +130,12 @@ function mapRawToResult(
   ticketMap: Map<string, Ticket>
 ): AIResult {
   const confidence = normalizeConfidence(raw.confidence);
+  const summary = raw.summary?.trim() ?? "";
 
   if (!Array.isArray(raw.answers) || raw.answers.length === 0) {
     return {
-      answers: [
-        {
-          text: "No relevant information found in the synced Jira tickets.",
-          sources: [],
-        },
-      ],
+      summary,
+      answers: [{ text: "No relevant information found in the synced Jira tickets.", sources: [] }],
       confidence: "Low",
     };
   }
@@ -146,7 +152,7 @@ function mapRawToResult(
       .filter((s) => s.key),
   }));
 
-  return { answers, confidence };
+  return { summary, answers, confidence };
 }
 
 function normalizeConfidence(val?: string): Confidence {
@@ -162,23 +168,16 @@ function fallbackAnswer(
 ): AIResult {
   if (tickets.length === 0) {
     return {
-      answers: [
-        {
-          text: "No relevant information found in the synced Jira tickets.",
-          sources: [],
-        },
-      ],
+      summary: "",
+      answers: [{ text: "No relevant information found in the synced Jira tickets.", sources: [] }],
       confidence: "Low",
     };
   }
 
-  const answers: AnswerBlock[] = tickets.slice(0, 7).map((t) => {
+  const answers: AnswerBlock[] = tickets.slice(0, 5).map((t) => {
     const desc = (t.descriptionText ?? "").trim().slice(0, 300);
-    const text = desc
-      ? `${t.summary}\n\n${desc}`
-      : t.summary || t.key;
     return {
-      text,
+      text: desc ? `${t.summary}\n\n${desc}` : t.summary || t.key,
       sources: [{ key: t.key, url: t.url, summary: t.summary }],
     };
   });
@@ -186,5 +185,5 @@ function fallbackAnswer(
   const confidence: Confidence =
     tickets.length === 1 ? "High" : tickets.length <= 3 ? "Medium" : "Low";
 
-  return { answers, confidence };
+  return { summary: "", answers, confidence };
 }
