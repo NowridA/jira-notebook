@@ -25,12 +25,12 @@ CORE RULES:
 - Only split into multiple answer blocks when the findings are genuinely distinct topics.
 - If no relevant information exists, say so clearly.
 
-RESPONSE FORMAT (strict JSON only — no markdown, no code fences):
+RESPONSE FORMAT (strict JSON only — no code fences):
 {
-  "summary": "One sentence interpreting what the user is really asking.",
+  "summary": "One to two sentences: restate what was found across all findings (not just what was asked). E.g. 'Found 3 tickets about X. The main cause was Y, resolved by Z.'",
   "answers": [
     {
-      "text": "Direct, focused answer. Lead with the resolution or key finding. Be specific, not generic.",
+      "text": "Answer text using markdown: **bold** for key terms/categories, bullet lists (- item) for multiple points. Lead with the resolution or key finding. Do NOT include raw ticket titles or dump ticket fields.",
       "sourceKeys": ["DEV-123"]
     }
   ],
@@ -38,8 +38,10 @@ RESPONSE FORMAT (strict JSON only — no markdown, no code fences):
 }
 
 ANSWER QUALITY GUIDELINES:
+- Format with markdown: **bold** for categories/key terms, - bullet points for lists of causes or steps.
 - Start with the most important finding or resolution.
-- Include specific details (error names, ticket IDs mentioned in text, steps taken) when present.
+- Write as a concise explanation, NOT as a ticket dump. Never show "SLA due date:", "Comments/Replies:", or raw ticket field labels.
+- Include specific details (error names, steps taken, resolutions) from descriptions and comments.
 - If multiple tickets say the same thing, cite all but write one consolidated answer.
 - Avoid phrases like "According to the ticket" or "The ticket mentions" — just state the fact.
 - Max 3 answer blocks. Prefer 1-2 tight answers over many scattered ones.
@@ -56,7 +58,7 @@ If no relevant information is found, return:
   "confidence": "Low"
 }
 
-IMPORTANT: Return ONLY raw JSON. No markdown, no \`\`\`json blocks, no extra text.`;
+IMPORTANT: Return ONLY raw JSON. No \`\`\`json blocks, no extra text.`;
 
 function buildTicketContext(tickets: Ticket[]): string {
   return tickets
@@ -175,9 +177,27 @@ function fallbackAnswer(
   }
 
   const answers: AnswerBlock[] = tickets.slice(0, 5).map((t) => {
-    const desc = (t.descriptionText ?? "").trim().slice(0, 300);
+    // Short excerpt from description (first ~200 chars, cut at word boundary)
+    const rawDesc = (t.descriptionText ?? "").trim();
+    const descExcerpt = rawDesc.length > 200
+      ? rawDesc.slice(0, 200).replace(/\s\S+$/, "") + "…"
+      : rawDesc;
+
+    // Last comment as latest update / resolution hint
+    const commentLines = (t.commentsText ?? "").trim().split("\n").filter(Boolean);
+    const lastComment = commentLines[commentLines.length - 1] ?? "";
+    const commentExcerpt = lastComment.length > 150
+      ? lastComment.slice(0, 150).replace(/\s\S+$/, "") + "…"
+      : lastComment;
+
+    const parts = [
+      descExcerpt,
+      commentExcerpt ? `*Latest update:* ${commentExcerpt}` : "",
+    ].filter(Boolean);
+
+    const body = parts.join("\n\n");
     return {
-      text: desc ? `${t.summary}\n\n${desc}` : t.summary || t.key,
+      text: body ? `**${t.summary}**\n\n${body}` : `**${t.summary || t.key}**`,
       sources: [{ key: t.key, url: t.url, summary: t.summary }],
     };
   });
@@ -185,5 +205,11 @@ function fallbackAnswer(
   const confidence: Confidence =
     tickets.length === 1 ? "High" : tickets.length <= 3 ? "Medium" : "Low";
 
-  return { summary: "", answers, confidence };
+  const total = tickets.length;
+  const summary =
+    total === 1
+      ? `Found 1 relevant ticket.`
+      : `Found ${total} relevant ticket${total > 5 ? `s — showing top 5` : `s`}.`;
+
+  return { summary, answers, confidence };
 }

@@ -160,8 +160,16 @@ export async function POST() {
     };
   });
 
-  await upsertTickets(tickets);
-  await appendSyncRun({ at: new Date().toISOString(), count: tickets.length });
+  try {
+    await upsertTickets(tickets);
+    await appendSyncRun({ at: new Date().toISOString(), count: tickets.length });
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    return NextResponse.json(
+      { error: "Failed to save tickets", detail },
+      { status: 500 }
+    );
+  }
 
   const payload = {
     count: tickets.length,
