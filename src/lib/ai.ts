@@ -27,7 +27,7 @@ CORE RULES:
 
 RESPONSE FORMAT (strict JSON only — no code fences):
 {
-  "summary": "One sentence interpreting what the user is really asking.",
+  "summary": "One to two sentences: restate what was found across all findings (not just what was asked). E.g. 'Found 3 tickets about X. The main cause was Y, resolved by Z.'",
   "answers": [
     {
       "text": "Answer text using markdown: **bold** for key terms/categories, bullet lists (- item) for multiple points. Lead with the resolution or key finding. Do NOT include raw ticket titles or dump ticket fields.",
@@ -189,5 +189,11 @@ function fallbackAnswer(
   const confidence: Confidence =
     tickets.length === 1 ? "High" : tickets.length <= 3 ? "Medium" : "Low";
 
-  return { summary: "", answers, confidence };
+  const total = tickets.length;
+  const summary =
+    total === 1
+      ? `Found 1 relevant ticket.`
+      : `Found ${total} relevant ticket${total > 5 ? `s — showing top 5` : `s`}.`;
+
+  return { summary, answers, confidence };
 }
